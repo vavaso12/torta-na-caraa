@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎬 Torta na Cara Show</title>
+
+<style>
+body{
+ margin:0;
+ font-family:Arial,Helvetica,sans-serif;
+ background:radial-gradient(circle at top,#1c7ed6,#0b2a4a);
+ color:#fff;
+ display:flex;
+ justify-content:center;
+ align-items:center;
+ min-height:100vh;
+}
+
+.container{
+ width:100%;
+ max-width:520px;
+ background:#081a2f;
+ border-radius:18px;
+ padding:22px;
+ box-shadow:0 15px 40px rgba(0,0,0,.6);
+ text-align:center;
+}
+
+h1{
+ margin-top:0;
+ color:#ffd43b;
+ letter-spacing:1px;
+}
+
+input,select,button{
+ width:100%;
+ padding:12px;
+ margin:6px 0;
+ font-size:16px;
+ border-radius:12px;
+ border:none;
+}
+
+select,input{
+ background:#102a44;
+ color:#fff;
+}
+
+button{
+ background:#ffd43b;
+ color:#000;
+ font-weight:bold;
+ cursor:pointer;
+}
+
+.options button{
+ background:#1c7ed6;
+ color:#fff;
+}
+
+.options button:hover{filter:brightness(1.1)}
+
+.score{
+ display:flex;
+ justify-content:space-between;
+ font-weight:bold;
+ margin-bottom:8px;
+}
+
+.timer{
+ font-size:26px;
+ color:#ff8787;
+ margin-bottom:8px;
+}
+
+.feedback{
+ font-size:28px;
+ margin:10px;
+}
+
+.correct{color:#69db7c}
+.wrong{color:#ff6b6b}
+
+.hidden{display:none}
+
+footer{opacity:.6;font-size:12px;margin-top:10px}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<!-- START -->
+<div id="start">
+ <h1>🎬 Torta na Cara</h1>
+ <p>Escolha os times, categoria e dificuldade</p>
+
+ <input id="t1" placeholder="Time 1">
+ <input id="t2" placeholder="Time 2">
+
+ <select id="level">
+  <option value="facil">Fácil</option>
+  <option value="medio">Médio</option>
+  <option value="dificil">Difícil</option>
+ </select>
+
+ <select id="category">
+  <option value="misturado">🔥 Misturado</option>
+  <option value="historia">📜 História</option>
+  <option value="geografia">🌍 Geografia</option>
+  <option value="esportes">⚽ Esportes</option>
+  <option value="geral">🧠 Cultura Geral</option>
+ </select>
+
+ <button onclick="startGame()">Começar Show</button>
+</div>
+
+<!-- GAME -->
+<div id="game" class="hidden">
+ <div class="score">
+  <span id="s1"></span>
+  <span id="s2"></span>
+ </div>
+
+ <div class="timer">⏱ <span id="time">15</span>s</div>
+
+ <h3 id="turn"></h3>
+ <h2 id="question"></h2>
+
+ <div class="options" id="options"></div>
+ <div id="feedback" class="feedback"></div>
+</div>
+
+<!-- END -->
+<div id="end" class="hidden">
+ <h2>🏆 Resultado Final</h2>
+ <div id="result"></div>
+ <button onclick="location.reload()">Novo Jogo</button>
+</div>
+
+<footer>Game Show em Família 🎉</footer>
+
+</div>
+
+<script>
+/* ========================
+   SONS
+======================== */
+const sndCorrect = new Audio("https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg");
+const sndWrong   = new Audio("https://actions.google.com/sounds/v1/cartoon/splat.ogg");
+const sndTick    = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+
+function play(s){ try{s.currentTime=0;s.play();}catch(e){} }
+
+/* ========================
+   PERGUNTAS POR CATEGORIA
+======================== */
+const banco = {
+ historia:[
+  {q:"Quem descobriu o Brasil?",o:["Pedro Álvares Cabral","Dom Pedro I","Tiradentes","Getúlio Vargas"],a:0},
+  {q:"Em que ano o homem pisou na Lua?",o:["1965","1969","1972","1980"],a:1}
+ ],
+ geografia:[
+  {q:"Capital do Brasil?",o:["Brasília","São Paulo","Rio de Janeiro","Salvador"],a:0},
+  {q:"Maior oceano do mundo?",o:["Atlântico","Índico","Pacífico","Ártico"],a:2}
+ ],
+ esportes:[
+  {q:"Quantas Copas do Mundo o Brasil ganhou?",o:["3","4","5","6"],a:2},
+  {q:"Em que esporte Pelé ficou famoso?",o:["Basquete","Futebol","Tênis","Vôlei"],a:1}
+ ],
+ geral:[
+  {q:"Quem pintou a Mona Lisa?",o:["Van Gogh","Picasso","Da Vinci","Michelangelo"],a:2},
+  {q:"Qual elemento químico é O?",o:["Ouro","Oxigênio","Ósmio","Carbono"],a:1}
+ ]
+};
+
+function gerarPerguntas(cat){
+ let arr=[];
+ if(cat==="misturado"){
+  Object.values(banco).forEach(v=>arr=arr.concat(v));
+ }else{
+  arr=banco[cat];
+ }
+ let big=[];
+ for(let i=0;i<50;i++) big=big.concat(arr);
+ return big.sort(()=>Math.random()-0.5);
+}
+
+/* ========================
+   JOGO
+======================== */
+let q=[],i=0,turn=1,s1=0,s2=0,time=15,timer,t1,t2;
+
+function startGame(){
+ t1=document.getElementById("t1").value||"Time 1";
+ t2=document.getElementById("t2").value||"Time 2";
+ const lvl=document.getElementById("level").value;
+ const cat=document.getElementById("category").value;
+
+ time = lvl==="facil"?20 : lvl==="medio"?15 : 10;
+ q = gerarPerguntas(cat);
+
+ document.getElementById("start").classList.add("hidden");
+ document.getElementById("game").classList.remove("hidden");
+ load();
+}
+
+function load(){
+ if(i>=q.length){end();return}
+ clearInterval(timer);
+ document.getElementById("feedback").innerHTML="";
+ document.getElementById("time").innerText=time;
+ document.getElementById("turn").innerText="Vez do "+(turn===1?t1:t2);
+ document.getElementById("s1").innerText=t1+": "+s1;
+ document.getElementById("s2").innerText=t2+": "+s2;
+ document.getElementById("question").innerText=q[i].q;
+
+ const o=document.getElementById("options");
+ o.innerHTML="";
+ q[i].o.forEach((x,n)=>{
+  const b=document.createElement("button");
+  b.innerText=x;
+  b.onclick=()=>answer(n);
+  o.appendChild(b);
+ });
+
+ let t=time;
+ timer=setInterval(()=>{
+  t--;
+  document.getElementById("time").innerText=t;
+  play(sndTick);
+  if(t===0){ clearInterval(timer); show(false); }
+ },1000);
+}
+
+function answer(n){
+ clearInterval(timer);
+ show(n===q[i].a);
+}
+
+function show(ok){
+ if(ok){
+  if(turn===1)s1++; else s2++;
+  document.getElementById("feedback").innerHTML="<span class='correct'>✔ Resposta certa!</span>";
+  play(sndCorrect);
+ }else{
+  document.getElementById("feedback").innerHTML="<span class='wrong'>🥧 Torta na cara!</span>";
+  play(sndWrong);
+ }
+ setTimeout(()=>{
+  i++;turn=turn===1?2:1;load();
+ },2000);
+}
+
+function end(){
+ document.getElementById("game").classList.add("hidden");
+ document.getElementById("end").classList.remove("hidden");
+ let w="Empate";
+ if(s1>s2)w=t1+" venceu 🏆";
+ if(s2>s1)w=t2+" venceu 🏆";
+ document.getElementById("result").innerHTML=`
+ <p>${t1}: ${s1}</p>
+ <p>${t2}: ${s2}</p>
+ <h3>${w}</h3>`;
+}
+</script>
+
+</body>
+</html>
